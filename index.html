@@ -12,12 +12,13 @@
             background: #0f172a;
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            perspective: 1000px; /* 增加 3D 透視感 */
-            -webkit-user-select: none; /* 禁止選取文字 */
+            perspective: 1000px;
+            -webkit-user-select: none;
             user-select: none;
+            /* 修正：使用動態高度以適應手機瀏覽器 */
+            height: 100dvh; 
         }
 
-        /* 遊戲容器震動特效 */
         .shake-screen {
             animation: screen-shake 0.1s infinite;
         }
@@ -27,7 +28,6 @@
             100% { transform: translate(1px, -1px) rotate(0deg); }
         }
 
-        /* 瓶子動畫 */
         .bottle-container {
             position: relative;
             height: 300px;
@@ -36,26 +36,23 @@
             transform-style: preserve-3d;
         }
 
-        /* 升級版噴發泡沫 - 更具液體感 */
         .foam-spray {
             position: absolute;
             bottom: 220px;
             left: 50%;
             transform: translateX(-50%);
-            width: 70px; /* 加寬 */
-            /* 使用徑向漸變模擬立體圓柱感 */
+            width: 70px;
             background: radial-gradient(circle at 30% 30%, #ffffff, #e2e8f0 40%, rgba(255,255,255,0.4) 80%, transparent 100%);
             border-radius: 40px 40px 0 0;
             height: 0;
             transition: height 1s cubic-bezier(0.1, 0.9, 0.2, 1.1);
             z-index: 10;
-            filter: blur(3px) contrast(1.2); /* 讓邊緣融合更像液體 */
+            filter: blur(3px) contrast(1.2);
             box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
         }
 
         .hidden-screen { display: none !important; }
 
-        /* 能量條與特效 */
         .tier-1 { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
         .tier-2 { background: #f97316; box-shadow: 0 0 15px #f97316; }
         .tier-3 { background: #ef4444; box-shadow: 0 0 20px #ef4444; }
@@ -73,23 +70,21 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* 升級版粒子 - 泡沫四飛 */
         .particle {
             position: absolute;
             background: radial-gradient(circle at 30% 30%, #fff, #cbd5e1);
             border-radius: 50%;
             pointer-events: none;
-            z-index: 15; /* 在泡沫柱前面 */
+            z-index: 15;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* 衝上雲霄特效：雲層 */
         .cloud {
             position: absolute;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 50%;
             filter: blur(20px);
-            z-index: 1; /* 在所有物體後面 */
+            z-index: 1;
             pointer-events: none;
         }
 
@@ -98,20 +93,14 @@
             20% { opacity: 0.6; }
             100% { transform: translateY(110vh) scale(1.5); opacity: 0; }
         }
-
-        @keyframes particle-spin {
-            0% { transform: rotate(0deg) scale(1); }
-            100% { transform: rotate(360deg) scale(0); }
-        }
     </style>
 </head>
-<body class="flex flex-col items-center justify-between h-screen p-6 bg-slate-900 overflow-hidden relative">
+<body class="flex flex-col items-center justify-between p-6 bg-slate-900 overflow-hidden relative">
     
-    <!-- 雲層容器 -->
     <div id="sky-container" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none"></div>
 
-    <!-- 1. 開始畫面 -->
-    <div id="start-screen" class="flex flex-col items-center justify-center flex-grow space-y-10 text-center z-50 w-full max-w-md">
+    <!-- 1. 開始畫面 (修正：使用 fixed inset-0 強制覆蓋全屏，避免被擠壓) -->
+    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 p-6 space-y-6 text-center">
         <div class="space-y-2">
             <h1 class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600 tracking-tighter filter drop-shadow-lg">無限噴射</h1>
             <p class="text-slate-400 text-lg font-medium">目標：衝上 10,000 層樓！</p>
@@ -119,4 +108,417 @@
         
         <div class="relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-amber-600 to-purple-600 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-            <div class="relative w-48 h-48 bg-slate-900 rounded-full flex items-center justify-center border-4
+            <!-- 稍微縮小圖標尺寸以適應小螢幕 -->
+            <div class="relative w-40 h-40 bg-slate-900 rounded-full flex items-center justify-center border-4 border-slate-700">
+                 <span class="text-6xl">🚀</span>
+            </div>
+        </div>
+
+        <!-- 按鈕 -->
+        <button id="btn-start" class="group relative w-full max-w-sm py-5 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl text-white font-black text-2xl shadow-xl transform active:scale-95 transition-all overflow-hidden cursor-pointer select-none" style="touch-action: manipulation; -webkit-tap-highlight-color: transparent;">
+            <span class="relative z-10 pointer-events-none">開始挑戰</span>
+            <div class="absolute inset-0 h-full w-full bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+        </button>
+        
+        <p class="text-xs text-slate-600">iOS 用戶請記得允許動作權限</p>
+    </div>
+
+    <!-- 2. 遊戲進行畫面 -->
+    <div id="game-screen" class="hidden-screen flex-grow flex flex-col items-center justify-between w-full z-50 py-4 h-full">
+        
+        <!-- 頂部數據 -->
+        <div class="w-full flex justify-between items-center px-2">
+            <div class="flex flex-col items-start">
+                <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">TIME</span>
+                <span id="timer" class="text-6xl font-black text-white leading-none">10</span>
+            </div>
+            <div class="flex flex-col items-end">
+                <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">POWER</span>
+                <span id="live-score" class="text-4xl font-black text-amber-500 tabular-nums">0</span>
+            </div>
+        </div>
+        
+        <!-- 中央瓶子 -->
+        <div class="relative w-full flex-grow flex justify-center items-end pb-8">
+            <div id="foam" class="foam-spray"></div>
+            
+            <div id="bottle" class="bottle-container origin-bottom">
+                <svg width="100" height="260" viewBox="0 0 100 260" fill="none">
+                    <path d="M30,20 L70,20 L70,60 C70,60 90,90 90,130 L90,240 C90,255 80,260 65,260 L35,260 C20,260 10,255 10,240 L10,130 C10,90 30,60 30,60 Z" fill="#451a03" stroke="#78350f" stroke-width="2"/>
+                    <path d="M85,130 L85,240 C85,245 80,250 75,250" stroke="rgba(255,255,255,0.2)" stroke-width="3" fill="none"/>
+                    
+                    <rect x="20" y="140" width="60" height="70" rx="4" fill="#f59e0b" />
+                    <rect x="25" y="145" width="50" height="60" rx="2" stroke="#78350f" stroke-width="1" fill="none"/>
+                    <text x="50" y="175" font-family="Arial" font-size="12" fill="#451a03" font-weight="900" text-anchor="middle">MAX</text>
+                    <text x="50" y="195" font-family="Arial" font-size="14" fill="#451a03" font-weight="900" text-anchor="middle">POWER</text>
+                    
+                    <rect id="bottle-cap" x="28" y="10" width="44" height="15" rx="3" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- 底部能量條 -->
+        <div class="w-full space-y-2 mb-safe">
+            <div class="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <span>Intensity Level</span>
+                <span id="tier-text" class="text-white">NORMAL</span>
+            </div>
+            <div class="w-full bg-slate-800 h-6 rounded-full overflow-hidden border border-slate-600 relative">
+                <div class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8L3N2Zz4=')]"></div>
+                <div id="pressure-bar" class="h-full w-0 transition-all duration-75 tier-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 結果畫面 (修正：同樣使用 fixed inset-0) -->
+    <div id="result-screen" class="hidden-screen fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 p-6 space-y-6 text-center">
+        <div class="space-y-2">
+            <h2 class="text-xl font-bold text-slate-400 uppercase tracking-widest">最終高度</h2>
+            <div class="relative inline-block">
+                <div class="text-7xl font-black text-white leading-none tracking-tighter" id="final-floors">0</div>
+                <div class="text-2xl font-bold text-amber-500 text-right mt-1">層 (Floors)</div>
+            </div>
+        </div>
+
+        <div id="rank-badge" class="px-6 py-2 bg-slate-800 rounded-lg border border-slate-600 text-lg font-bold text-white transform rotate-2">
+            ...
+        </div>
+
+        <div class="w-full max-w-xs bg-slate-800/50 p-4 rounded-xl text-left space-y-3 text-sm text-slate-300 border border-slate-700">
+            <div class="flex justify-between">
+                <span>你的高度:</span>
+                <span class="text-white font-bold" id="compare-score">0m</span>
+            </div>
+            <div class="flex justify-between border-t border-slate-700 pt-2">
+                <span>相當於:</span>
+                <span class="text-amber-400 font-bold" id="compare-object">...</span>
+            </div>
+        </div>
+
+        <button id="btn-restart" class="w-full max-w-xs bg-white text-slate-900 font-black py-4 rounded-full text-xl shadow-lg active:scale-95 transition-all cursor-pointer" style="touch-action: manipulation;">
+            再來一次
+        </button>
+    </div>
+
+    <script>
+        // --- 核心變數 ---
+        let state = 'START';
+        let rawScore = 0;       
+        let displayFloors = 0;  
+        let timeLeft = 10;
+        let timerInterval;
+        let shakeMultiplier = 1; 
+        let lastShakeTime = 0;
+        let skyInterval; 
+        
+        // --- DOM ---
+        const ui = {
+            start: document.getElementById('start-screen'),
+            game: document.getElementById('game-screen'),
+            result: document.getElementById('result-screen'),
+            timer: document.getElementById('timer'),
+            liveScore: document.getElementById('live-score'),
+            bar: document.getElementById('pressure-bar'),
+            tierText: document.getElementById('tier-text'),
+            bottle: document.getElementById('bottle'),
+            cap: document.getElementById('bottle-cap'),
+            foam: document.getElementById('foam'),
+            finalFloors: document.getElementById('final-floors'),
+            rankBadge: document.getElementById('rank-badge'),
+            compareScore: document.getElementById('compare-score'),
+            compareObject: document.getElementById('compare-object'),
+            skyContainer: document.getElementById('sky-container')
+        };
+
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            alert("請使用 HTTPS 連線，否則感應器無法運作！");
+        }
+
+        document.getElementById('btn-start').addEventListener('click', async (e) => {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const res = await DeviceMotionEvent.requestPermission();
+                    if (res === 'granted') startGame();
+                    else alert('請允許動作權限以進行遊戲');
+                } catch (e) { 
+                    console.error(e);
+                    startGame(); 
+                }
+            } else {
+                startGame();
+            }
+        });
+
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            resetGame();
+            startGame();
+        });
+
+        function startGame() {
+            state = 'PLAYING';
+            rawScore = 0;
+            timeLeft = 10;
+            shakeMultiplier = 1;
+            
+            ui.start.classList.add('hidden-screen');
+            ui.result.classList.add('hidden-screen');
+            ui.game.classList.remove('hidden-screen');
+            
+            ui.timer.innerText = timeLeft;
+            ui.bottle.classList.add('shake-screen'); 
+            
+            window.addEventListener('devicemotion', handleMotion);
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                ui.timer.innerText = timeLeft;
+                
+                if(timeLeft <= 3) {
+                    ui.timer.classList.add('text-red-500', 'scale-110');
+                }
+
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+        }
+
+        function handleMotion(event) {
+            if (state !== 'PLAYING') return;
+
+            const acc = event.acceleration || event.accelerationIncludingGravity;
+            if (!acc) return;
+
+            const x = acc.x || 0;
+            const y = acc.y || 0;
+            const z = acc.z || 0;
+            
+            let force = Math.sqrt(x*x + y*y + z*z);
+            
+            if (force > 5) {
+                const now = Date.now();
+                if (now - lastShakeTime < 150) {
+                    shakeMultiplier = Math.min(shakeMultiplier + 0.05, 3.0); 
+                } else {
+                    shakeMultiplier = Math.max(1.0, shakeMultiplier - 0.1);
+                }
+                lastShakeTime = now;
+
+                const points = Math.pow(force, 1.3) * shakeMultiplier * 0.5;
+                
+                rawScore += points;
+                updateGameUI(force);
+            }
+        }
+
+        function updateGameUI(currentForce) {
+            const floors = Math.floor(rawScore / 3);
+            ui.liveScore.innerText = floors;
+
+            const shakeX = (Math.random() - 0.5) * currentForce;
+            const shakeY = (Math.random() - 0.5) * currentForce;
+            const rotate = (Math.random() - 0.5) * (currentForce / 2);
+            ui.bottle.style.transform = `translate(${shakeX}px, ${shakeY}px) rotate(${rotate}deg)`;
+
+            const tierBase = 2000;
+            const currentTier = Math.floor(rawScore / tierBase); 
+            const progress = (rawScore % tierBase) / tierBase * 100;
+
+            ui.bar.style.width = `${progress}%`;
+            ui.bar.className = 'h-full w-0 transition-all duration-75'; 
+            
+            if (currentTier === 0) {
+                ui.bar.classList.add('tier-1');
+                ui.tierText.innerText = "WARMING UP";
+                ui.tierText.style.color = "#fbbf24";
+            } else if (currentTier === 1) {
+                ui.bar.classList.add('tier-2');
+                ui.tierText.innerText = "HEATING UP!";
+                ui.tierText.style.color = "#f97316";
+            } else if (currentTier === 2) {
+                ui.bar.classList.add('tier-3');
+                ui.tierText.innerText = "ON FIRE!!";
+                ui.tierText.style.color = "#ef4444";
+            } else if (currentTier === 3) {
+                ui.bar.classList.add('tier-4');
+                ui.tierText.innerText = "SUPER CHARGED!!!";
+                ui.tierText.style.color = "#a855f7";
+            } else {
+                ui.bar.classList.add('tier-5'); 
+                ui.tierText.innerText = "GOD MODE 🚀";
+                ui.tierText.style.color = "#22c55e";
+            }
+        }
+
+        function endGame() {
+            state = 'ANIMATING';
+            clearInterval(timerInterval);
+            window.removeEventListener('devicemotion', handleMotion);
+            ui.bottle.style.transform = 'none';
+
+            const finalScore = Math.floor(rawScore / 3);
+            playPopAnimation(finalScore);
+        }
+
+        function playPopAnimation(floors) {
+            ui.cap.style.transition = 'transform 0.4s ease-out, opacity 0.3s';
+            ui.cap.style.transform = `translateY(-600px) rotate(${1000 + Math.random()*500}deg)`;
+            ui.cap.style.opacity = '0';
+
+            const visualHeight = Math.min(Math.log10(floors + 1) * 200, 450); 
+            ui.foam.style.height = `${visualHeight}px`;
+
+            if (floors > 50) { 
+                triggerSkyRush(floors);
+            }
+
+            createParticles(visualHeight, floors);
+
+            setTimeout(() => showResults(floors), 3500); 
+        }
+
+        function triggerSkyRush(floors) {
+            const density = Math.min(floors / 200, 30); 
+            const baseSpeed = Math.max(0.2, 1.0 - (floors / 5000)); 
+            
+            document.body.style.transition = 'background 3s ease';
+            if (floors > 3000) document.body.style.background = '#020617'; 
+
+            skyInterval = setInterval(() => {
+                const cloud = document.createElement('div');
+                cloud.classList.add('cloud');
+                
+                const size = 50 + Math.random() * 200;
+                cloud.style.width = size + 'px';
+                cloud.style.height = size + 'px';
+                cloud.style.left = Math.random() * 100 + '%';
+                cloud.style.top = '-200px';
+                cloud.style.opacity = 0.1 + Math.random() * 0.3;
+                
+                const duration = baseSpeed + Math.random() * 0.5;
+                cloud.style.animation = `rush-down ${duration}s linear forwards`;
+                
+                ui.skyContainer.appendChild(cloud);
+                
+                setTimeout(() => cloud.remove(), duration * 1000);
+            }, 80 - density * 2);
+
+            setTimeout(() => {
+                clearInterval(skyInterval);
+                document.body.style.background = '#0f172a';
+            }, 3000);
+        }
+
+        function createParticles(height, floors) {
+            const count = Math.min(80 + Math.floor(floors / 50), 300); 
+            const container = ui.game;
+            
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const p = document.createElement('div');
+                    p.className = 'particle';
+                    const size = Math.random() * 12 + 4; 
+                    p.style.width = size + 'px';
+                    p.style.height = size + 'px';
+                    p.style.left = '50%';
+                    p.style.bottom = (200 + Math.random() * 100) + 'px'; 
+                    
+                    const angle = (Math.random() - 0.5) * 1.5; 
+                    const velocity = 400 + Math.random() * 400; 
+                    const tx = Math.sin(angle) * velocity;
+                    const ty = -Math.cos(angle) * (velocity + height); 
+                    
+                    container.appendChild(p);
+                    
+                    p.animate([
+                        { transform: `translate(0, 0) scale(1) rotate(0deg)`, opacity: 1 },
+                        { transform: `translate(${tx}px, ${ty}px) scale(0) rotate(${Math.random()*360}deg)`, opacity: 0 }
+                    ], {
+                        duration: 800 + Math.random() * 1200,
+                        easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                        fill: 'forwards'
+                    });
+                    
+                    setTimeout(() => p.remove(), 2000);
+                }, i * 5); 
+            }
+        }
+
+        function showResults(floors) {
+            state = 'RESULT';
+            ui.game.classList.add('hidden-screen');
+            ui.result.classList.remove('hidden-screen');
+            
+            animateValue(ui.finalFloors, 0, floors, 1500);
+
+            let rankText = "";
+            let rankColor = "";
+            let compareObj = "";
+            let meters = floors * 3;
+
+            if (floors < 100) {
+                rankText = "缺乏鍛鍊 🥱";
+                rankColor = "text-gray-400";
+                compareObj = "路邊電線桿";
+            } else if (floors < 500) {
+                rankText = "普通大廈 🏢";
+                rankColor = "text-yellow-400";
+                compareObj = "住宅大樓";
+            } else if (floors < 1500) {
+                rankText = "摩天大樓 🌆";
+                rankColor = "text-orange-400";
+                compareObj = "台北101 / IFC";
+            } else if (floors < 3000) {
+                rankText = "高聳入雲 ☁️";
+                rankColor = "text-red-400";
+                compareObj = "聖母峰";
+            } else if (floors < 6000) {
+                rankText = "平流層 ✈️";
+                rankColor = "text-purple-400";
+                compareObj = "民航機飛行高度";
+            } else if (floors < 10000) {
+                rankText = "外太空邊緣 🛰️";
+                rankColor = "text-blue-400";
+                compareObj = "低軌道衛星";
+            } else {
+                rankText = "衝出銀河系 🌌";
+                rankColor = "text-green-400";
+                compareObj = "國際太空站 (ISS)";
+            }
+
+            ui.rankBadge.innerText = rankText;
+            ui.rankBadge.className = `px-6 py-2 bg-slate-800 rounded-lg border border-slate-600 text-lg font-bold transform rotate-2 ${rankColor}`;
+            ui.compareScore.innerText = `${meters.toLocaleString()} 公尺`;
+            ui.compareObject.innerText = compareObj;
+        }
+
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function resetGame() {
+            rawScore = 0;
+            ui.timer.classList.remove('text-red-500', 'scale-110');
+            ui.bar.style.width = '0%';
+            ui.bar.className = 'h-full w-0 tier-1';
+            ui.tierText.innerText = "NORMAL";
+            ui.tierText.style.color = "white";
+            ui.cap.style.transition = 'none';
+            ui.cap.style.transform = 'none';
+            ui.cap.style.opacity = '1';
+            ui.foam.style.height = '0';
+            ui.liveScore.innerText = '0';
+            ui.skyContainer.innerHTML = ''; 
+            clearInterval(skyInterval);
+            document.body.style.background = '#0f172a';
+        }
+    </script>
+</body>
+</html>
