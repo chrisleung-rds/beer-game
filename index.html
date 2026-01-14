@@ -211,6 +211,9 @@
         let lastShakeTime = 0;
         let skyInterval; 
         
+        // --- 難度參數 ---
+        const DIFFICULTY_DIVISOR = 24; // 之前是 3，現在改為 24 (8倍難度)
+
         // --- DOM ---
         const ui = {
             start: document.getElementById('start-screen'),
@@ -310,7 +313,8 @@
         }
 
         function updateGameUI(currentForce) {
-            const floors = Math.floor(rawScore / 3);
+            // 使用新的難度係數計算顯示樓層
+            const floors = Math.floor(rawScore / DIFFICULTY_DIVISOR);
             ui.liveScore.innerText = floors;
 
             const shakeX = (Math.random() - 0.5) * currentForce;
@@ -352,21 +356,27 @@
             state = 'ANIMATING';
             clearInterval(timerInterval);
             window.removeEventListener('devicemotion', handleMotion);
-            ui.bottle.style.transform = 'none';
+            ui.bottle.style.transform = 'none'; // 先復位以備發射
 
-            const finalScore = Math.floor(rawScore / 3);
+            const finalScore = Math.floor(rawScore / DIFFICULTY_DIVISOR);
             playPopAnimation(finalScore);
         }
 
         function playPopAnimation(floors) {
+            // 瓶蓋飛走
             ui.cap.style.transition = 'transform 0.4s ease-out, opacity 0.3s';
             ui.cap.style.transform = `translateY(-600px) rotate(${1000 + Math.random()*500}deg)`;
             ui.cap.style.opacity = '0';
+            
+            // 瓶身向下掉落 (模擬鏡頭急速上升)
+            ui.bottle.style.transition = 'transform 2s ease-in'; // 慢進快出，模擬重力或反向加速
+            ui.bottle.style.transform = 'translateY(150vh)';     // 掉落到畫面外
 
             const visualHeight = Math.min(Math.log10(floors + 1) * 200, 450); 
             ui.foam.style.height = `${visualHeight}px`;
 
-            if (floors > 50) { 
+            // 因為難度增加，降低觸發 SkyRush 的門檻 (讓視覺效果依然容易出現，但分數很難拿)
+            if (floors > 10) { 
                 triggerSkyRush(floors);
             }
 
@@ -376,11 +386,12 @@
         }
 
         function triggerSkyRush(floors) {
-            const density = Math.min(floors / 200, 30); 
-            const baseSpeed = Math.max(0.2, 1.0 - (floors / 5000)); 
+            const density = Math.min(floors / 50, 30); // 調整雲層密度
+            // 即使分數低，也要有點速度感
+            const baseSpeed = Math.max(0.1, 0.8 - (floors / 1000)); 
             
             document.body.style.transition = 'background 3s ease';
-            if (floors > 3000) document.body.style.background = '#020617'; 
+            if (floors > 500) document.body.style.background = '#020617'; 
 
             skyInterval = setInterval(() => {
                 const cloud = document.createElement('div');
@@ -408,7 +419,7 @@
         }
 
         function createParticles(height, floors) {
-            const count = Math.min(80 + Math.floor(floors / 50), 300); 
+            const count = Math.min(80 + Math.floor(floors / 10), 300); // 調整粒子數量
             const container = ui.game;
             
             for (let i = 0; i < count; i++) {
@@ -419,12 +430,13 @@
                     p.style.width = size + 'px';
                     p.style.height = size + 'px';
                     p.style.left = '50%';
-                    p.style.bottom = (200 + Math.random() * 100) + 'px'; 
+                    // 粒子生成位置因為瓶子掉下去了，所以要設定得低一點，讓它們從下方衝上來
+                    p.style.bottom = (0 + Math.random() * 100) + 'px'; 
                     
                     const angle = (Math.random() - 0.5) * 1.5; 
-                    const velocity = 400 + Math.random() * 400; 
+                    const velocity = 500 + Math.random() * 400; // 增加速度
                     const tx = Math.sin(angle) * velocity;
-                    const ty = -Math.cos(angle) * (velocity + height); 
+                    const ty = -Math.cos(angle) * (velocity + height + 500); // 衝得更高
                     
                     container.appendChild(p);
                     
@@ -454,27 +466,28 @@
             let compareObj = "";
             let meters = floors * 3;
 
-            if (floors < 100) {
+            // 更新評級門檻以配合 8 倍難度
+            if (floors < 20) {
                 rankText = "缺乏鍛鍊 🥱";
                 rankColor = "text-gray-400";
                 compareObj = "路邊電線桿";
-            } else if (floors < 500) {
+            } else if (floors < 100) {
                 rankText = "普通大廈 🏢";
                 rankColor = "text-yellow-400";
                 compareObj = "住宅大樓";
-            } else if (floors < 1500) {
+            } else if (floors < 300) {
                 rankText = "摩天大樓 🌆";
                 rankColor = "text-orange-400";
                 compareObj = "台北101 / IFC";
-            } else if (floors < 3000) {
+            } else if (floors < 800) {
                 rankText = "高聳入雲 ☁️";
                 rankColor = "text-red-400";
                 compareObj = "聖母峰";
-            } else if (floors < 6000) {
+            } else if (floors < 2000) {
                 rankText = "平流層 ✈️";
                 rankColor = "text-purple-400";
                 compareObj = "民航機飛行高度";
-            } else if (floors < 10000) {
+            } else if (floors < 5000) {
                 rankText = "外太空邊緣 🛰️";
                 rankColor = "text-blue-400";
                 compareObj = "低軌道衛星";
@@ -510,9 +523,15 @@
             ui.bar.className = 'h-full w-0 tier-1';
             ui.tierText.innerText = "NORMAL";
             ui.tierText.style.color = "white";
+            
+            // 重置瓶子位置和動畫
+            ui.bottle.style.transition = 'none'; // 移除掉落動畫的 transition
+            ui.bottle.style.transform = 'none'; // 復位瓶子
+            
             ui.cap.style.transition = 'none';
             ui.cap.style.transform = 'none';
             ui.cap.style.opacity = '1';
+            
             ui.foam.style.height = '0';
             ui.liveScore.innerText = '0';
             ui.skyContainer.innerHTML = ''; 
