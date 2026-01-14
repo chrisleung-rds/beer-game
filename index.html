@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>噴發啤酒挑戰賽 - MINI GAME</title>
+    <title>啤酒噴發 - 無限挑戰版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -14,195 +14,234 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* 瓶子震動動畫 */
+        /* 遊戲容器震動特效 */
+        .shake-screen {
+            animation: screen-shake 0.1s infinite;
+        }
+        @keyframes screen-shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            50% { transform: translate(-1px, -1px) rotate(0deg); }
+            100% { transform: translate(1px, -1px) rotate(0deg); }
+        }
+
+        /* 瓶子動畫 */
         .bottle-container {
             position: relative;
-            height: 320px;
-            transition: transform 0.1s;
+            height: 300px;
+            transition: transform 0.05s; /* 更靈敏的反應 */
+            z-index: 20;
         }
 
-        .shaking {
-            animation: shake 0.1s infinite;
-        }
-
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            20% { transform: translate(-3px, 0px) rotate(-1.5deg); }
-            40% { transform: translate(3px, 2px) rotate(1.5deg); }
-            60% { transform: translate(-1px, -1px) rotate(1deg); }
-            80% { transform: translate(-3px, 1px) rotate(-1deg); }
-            100% { transform: translate(1px, -2px) rotate(-1.5deg); }
-        }
-
-        /* 噴發泡沫特效 */
+        /* 噴發泡沫 */
         .foam-spray {
             position: absolute;
-            bottom: 240px;
+            bottom: 220px;
             left: 50%;
             transform: translateX(-50%);
-            width: 50px;
-            background: linear-gradient(to top, #ffffff, rgba(255,255,255,0));
+            width: 60px;
+            background: linear-gradient(to top, #ffffff, rgba(255,255,255,0.8));
             border-radius: 30px 30px 0 0;
             height: 0;
-            transition: height 0.6s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+            transition: height 1s cubic-bezier(0.1, 0.9, 0.2, 1.1); /* 噴發更有力 */
             z-index: 10;
-            filter: blur(4px);
+            filter: blur(2px);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
         }
 
+        .hidden-screen { display: none !important; }
+
+        /* 能量條與特效 */
+        .tier-1 { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; } /* 黃 */
+        .tier-2 { background: #f97316; box-shadow: 0 0 15px #f97316; } /* 橘 */
+        .tier-3 { background: #ef4444; box-shadow: 0 0 20px #ef4444; } /* 紅 */
+        .tier-4 { background: #a855f7; box-shadow: 0 0 25px #a855f7; } /* 紫 */
+        .tier-5 { 
+            background: linear-gradient(90deg, #ef4444, #eab308, #22c55e, #3b82f6, #a855f7); 
+            background-size: 200% 200%;
+            animation: rainbow 1s ease infinite;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+        }
+
+        @keyframes rainbow { 
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 粒子 */
         .particle {
             position: absolute;
             background: white;
             border-radius: 50%;
             pointer-events: none;
-            z-index: 20;
+            z-index: 5;
         }
 
-        .hidden-screen {
-            display: none !important;
+        /* 背景流動特效 (高分時出現) */
+        .speed-lines {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.05) 41px);
+            background-size: 100% 100%;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1;
         }
-
-        /* 進度條發光 */
-        .progress-glow {
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
-        }
-
-        /* 指示燈 */
-        #sensor-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ef4444;
-            display: inline-block;
-            transition: background 0.2s;
-        }
-        .sensor-ok { background: #22c55e !important; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-between h-screen p-8 bg-gradient-to-b from-slate-900 to-black">
+<body class="flex flex-col items-center justify-between h-screen p-6 bg-slate-900 overflow-hidden">
+    
+    <div id="speed-bg" class="speed-lines"></div>
 
     <!-- 1. 開始畫面 -->
-    <div id="start-screen" class="flex flex-col items-center justify-center flex-grow space-y-10 text-center">
+    <div id="start-screen" class="flex flex-col items-center justify-center flex-grow space-y-10 text-center z-50 w-full max-w-md">
         <div class="space-y-2">
-            <h1 class="text-5xl font-black text-amber-500 tracking-tighter">BEER POP!</h1>
-            <p class="text-slate-400 text-lg">瘋狂搖動手機累積壓力</p>
+            <h1 class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600 tracking-tighter filter drop-shadow-lg">無限噴射</h1>
+            <p class="text-slate-400 text-lg font-medium">目標：衝上 10,000 層樓！</p>
         </div>
         
-        <div class="w-56 h-56 bg-slate-800/50 rounded-full flex items-center justify-center border-4 border-amber-500/30 relative">
-             <span class="text-8xl animate-bounce">📱</span>
-             <div class="absolute -bottom-2 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full uppercase">Shake Me</div>
+        <div class="relative group">
+            <div class="absolute -inset-1 bg-gradient-to-r from-amber-600 to-purple-600 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+            <div class="relative w-48 h-48 bg-slate-900 rounded-full flex items-center justify-center border-4 border-slate-700">
+                 <span class="text-7xl">🚀</span>
+            </div>
         </div>
 
-        <div id="https-msg" class="hidden-screen text-amber-200 bg-amber-900/30 p-4 rounded-xl text-sm border border-amber-500/20 max-w-xs">
-            注意：若無法偵測搖動，請確保網址為 <strong>HTTPS</strong> 格式。
-        </div>
-
-        <button id="btn-start" class="bg-amber-500 hover:bg-amber-400 text-slate-900 font-black py-5 px-14 rounded-full text-2xl shadow-[0_0_30px_rgba(245,158,11,0.4)] transform active:scale-90 transition-all">
-            開始挑戰
+        <button id="btn-start" class="relative w-full py-5 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl text-white font-black text-2xl shadow-xl transform active:scale-95 transition-all overflow-hidden">
+            <span class="relative z-10">開始挑戰</span>
+            <div class="absolute inset-0 h-full w-full bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
         </button>
         
-        <p class="text-[10px] text-slate-600 uppercase tracking-widest">Requires Motion Permissions on iOS</p>
+        <p class="text-xs text-slate-600">iOS 用戶請記得允許動作權限</p>
     </div>
 
     <!-- 2. 遊戲進行畫面 -->
-    <div id="game-screen" class="hidden-screen flex-grow flex flex-col items-center justify-center w-full space-y-10">
-        <div class="flex flex-col items-center">
-            <div id="timer" class="text-7xl font-black text-white tabular-nums">10</div>
-            <div class="flex items-center mt-2 space-x-2 bg-black/40 px-3 py-1 rounded-full">
-                <span id="sensor-indicator"></span>
-                <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Sensor Active</span>
+    <div id="game-screen" class="hidden-screen flex-grow flex flex-col items-center justify-between w-full z-50 py-4">
+        
+        <!-- 頂部數據 -->
+        <div class="w-full flex justify-between items-center px-2">
+            <div class="flex flex-col items-start">
+                <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">TIME</span>
+                <span id="timer" class="text-6xl font-black text-white leading-none">10</span>
+            </div>
+            <div class="flex flex-col items-end">
+                <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">POWER</span>
+                <span id="live-score" class="text-4xl font-black text-amber-500 tabular-nums">0</span>
             </div>
         </div>
         
-        <div class="relative w-full flex justify-center items-end" style="height: 45vh;">
-            <!-- 噴發特效 -->
+        <!-- 中央瓶子 -->
+        <div class="relative w-full flex-grow flex justify-center items-end pb-8">
             <div id="foam" class="foam-spray"></div>
             
-            <!-- 啤酒瓶 SVG -->
-            <div id="bottle" class="bottle-container">
-                <svg width="100" height="280" viewBox="0 0 100 280" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <!-- 瓶身 -->
-                    <path d="M30,25 L70,25 L70,70 C70,70 90,100 90,140 L90,250 C90,265 80,280 65,280 L35,280 C20,280 10,265 10,250 L10,140 C10,100 30,70 30,70 Z" fill="#3b210b" />
+            <div id="bottle" class="bottle-container origin-bottom">
+                <svg width="100" height="260" viewBox="0 0 100 260" fill="none">
+                    <!-- 瓶身光澤感優化 -->
+                    <path d="M30,20 L70,20 L70,60 C70,60 90,90 90,130 L90,240 C90,255 80,260 65,260 L35,260 C20,260 10,255 10,240 L10,130 C10,90 30,60 30,60 Z" fill="#451a03" stroke="#78350f" stroke-width="2"/>
+                    <path d="M85,130 L85,240 C85,245 80,250 75,250" stroke="rgba(255,255,255,0.2)" stroke-width="3" fill="none"/>
+                    
                     <!-- 酒標 -->
-                    <rect x="18" y="150" width="64" height="80" rx="4" fill="#f59e0b" />
-                    <text x="50" y="195" font-family="Arial" font-size="14" fill="#3b210b" font-weight="900" text-anchor="middle">SUPER</text>
-                    <text x="50" y="215" font-family="Arial" font-size="16" fill="#3b210b" font-weight="900" text-anchor="middle">BEER</text>
+                    <rect x="20" y="140" width="60" height="70" rx="4" fill="#f59e0b" />
+                    <rect x="25" y="145" width="50" height="60" rx="2" stroke="#78350f" stroke-width="1" fill="none"/>
+                    <text x="50" y="175" font-family="Arial" font-size="12" fill="#451a03" font-weight="900" text-anchor="middle">MAX</text>
+                    <text x="50" y="195" font-family="Arial" font-size="14" fill="#451a03" font-weight="900" text-anchor="middle">POWER</text>
+                    
                     <!-- 瓶蓋 -->
-                    <rect id="bottle-cap" x="28" y="10" width="44" height="15" rx="3" fill="#94a3b8" />
+                    <rect id="bottle-cap" x="28" y="10" width="44" height="15" rx="3" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>
                 </svg>
             </div>
         </div>
 
-        <div class="w-full max-w-xs space-y-2">
-            <div class="flex justify-between text-[10px] font-bold text-amber-500 uppercase tracking-widest">
-                <span>Pressure</span>
-                <span id="pressure-text">0%</span>
+        <!-- 底部能量條 -->
+        <div class="w-full space-y-2">
+            <div class="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <span>Intensity Level</span>
+                <span id="tier-text" class="text-white">NORMAL</span>
             </div>
-            <div class="w-full bg-slate-800 h-4 rounded-full overflow-hidden border border-slate-700">
-                <div id="pressure-bar" class="h-full bg-amber-500 w-0 transition-all duration-75 progress-glow"></div>
+            <div class="w-full bg-slate-800 h-6 rounded-full overflow-hidden border border-slate-600 relative">
+                <!-- 背景網格 -->
+                <div class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8L3N2Zz4=')]"></div>
+                <!-- 進度條 -->
+                <div id="pressure-bar" class="h-full w-0 transition-all duration-75 tier-1"></div>
             </div>
         </div>
-        
-        <p class="text-white font-black text-xl italic animate-pulse">SHAKE IT!!!!!</p>
     </div>
 
     <!-- 3. 結果畫面 -->
-    <div id="result-screen" class="hidden-screen flex flex-col items-center justify-center flex-grow space-y-8 text-center w-full">
-        <div class="space-y-1">
-            <h2 class="text-xl font-bold text-slate-500 uppercase tracking-widest">噴發高度</h2>
-            <div class="text-8xl font-black text-white"><span id="final-score">0</span><span class="text-3xl ml-2 text-amber-500">m</span></div>
-        </div>
-        
-        <div id="best-record" class="bg-amber-500/10 px-8 py-3 rounded-2xl text-amber-500 border border-amber-500/20 font-bold">
-            今日最高紀錄: 0m
+    <div id="result-screen" class="hidden-screen flex flex-col items-center justify-center flex-grow space-y-6 text-center w-full z-50">
+        <div class="space-y-2">
+            <h2 class="text-xl font-bold text-slate-400 uppercase tracking-widest">最終高度</h2>
+            <div class="relative inline-block">
+                <div class="text-7xl font-black text-white leading-none tracking-tighter" id="final-floors">0</div>
+                <div class="text-2xl font-bold text-amber-500 text-right mt-1">層 (Floors)</div>
+            </div>
         </div>
 
-        <div id="result-message" class="text-xl text-slate-300 font-medium px-6 leading-relaxed"></div>
+        <!-- 評價標籤 -->
+        <div id="rank-badge" class="px-6 py-2 bg-slate-800 rounded-lg border border-slate-600 text-lg font-bold text-white transform rotate-2">
+            ...
+        </div>
 
-        <button id="btn-restart" class="bg-white text-slate-950 font-black py-4 px-12 rounded-full text-xl shadow-xl active:scale-95 transition-all">
-            再挑戰一次
+        <!-- 比較圖表 -->
+        <div class="w-full max-w-xs bg-slate-800/50 p-4 rounded-xl text-left space-y-3 text-sm text-slate-300 border border-slate-700">
+            <div class="flex justify-between">
+                <span>你的高度:</span>
+                <span class="text-white font-bold" id="compare-score">0m</span>
+            </div>
+            <div class="flex justify-between border-t border-slate-700 pt-2">
+                <span>相當於:</span>
+                <span class="text-amber-400 font-bold" id="compare-object">...</span>
+            </div>
+        </div>
+
+        <button id="btn-restart" class="w-full max-w-xs bg-white text-slate-900 font-black py-4 rounded-full text-xl shadow-lg active:scale-95 transition-all">
+            再來一次
         </button>
     </div>
 
     <script>
-        // 遊戲核心邏輯
+        // --- 核心變數 ---
         let state = 'START';
-        let pressure = 0;
+        let rawScore = 0;       // 累積的原始分數 (無限)
+        let displayFloors = 0;  // 顯示的層數
         let timeLeft = 10;
         let timerInterval;
-        let bestScore = localStorage.getItem('beerBestScore') || 0;
-        const MAX_PRESSURE = 1200; // 增加上限難度
-
-        // DOM 元素選取
-        const screens = {
+        let shakeMultiplier = 1; // 連擊倍率
+        let lastShakeTime = 0;
+        
+        // --- DOM ---
+        const ui = {
             start: document.getElementById('start-screen'),
             game: document.getElementById('game-screen'),
-            result: document.getElementById('result-screen')
+            result: document.getElementById('result-screen'),
+            timer: document.getElementById('timer'),
+            liveScore: document.getElementById('live-score'),
+            bar: document.getElementById('pressure-bar'),
+            tierText: document.getElementById('tier-text'),
+            bottle: document.getElementById('bottle'),
+            cap: document.getElementById('bottle-cap'),
+            foam: document.getElementById('foam'),
+            finalFloors: document.getElementById('final-floors'),
+            rankBadge: document.getElementById('rank-badge'),
+            compareScore: document.getElementById('compare-score'),
+            compareObject: document.getElementById('compare-object'),
+            speedBg: document.getElementById('speed-bg')
         };
-        const bar = document.getElementById('pressure-bar');
-        const timerTxt = document.getElementById('timer');
-        const scoreTxt = document.getElementById('final-score');
-        const indicator = document.getElementById('sensor-indicator');
 
-        // 初始化 HTTPS 檢查
-        if (window.location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-            document.getElementById('https-msg').classList.remove('hidden-screen');
+        // --- HTTPS 檢查 ---
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            alert("請使用 HTTPS 連線，否則感應器無法運作！");
         }
 
-        updateBestScoreUI();
-
-        // 啟動按鈕 (處理 iOS 權限)
+        // --- 事件監聽 ---
         document.getElementById('btn-start').addEventListener('click', async () => {
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 try {
-                    const result = await DeviceMotionEvent.requestPermission();
-                    if (result === 'granted') {
-                        startGame();
-                    } else {
-                        alert('需要動作權限才能進行遊戲！');
-                    }
-                } catch (e) {
-                    startGame(); 
-                }
+                    const res = await DeviceMotionEvent.requestPermission();
+                    if (res === 'granted') startGame();
+                    else alert('請允許動作權限以進行遊戲');
+                } catch (e) { startGame(); }
             } else {
                 startGame();
             }
@@ -213,113 +252,170 @@
             startGame();
         });
 
+        // --- 遊戲邏輯 ---
         function startGame() {
             state = 'PLAYING';
-            pressure = 0;
+            rawScore = 0;
             timeLeft = 10;
+            shakeMultiplier = 1;
             
-            screens.start.classList.add('hidden-screen');
-            screens.result.classList.add('hidden-screen');
-            screens.game.classList.remove('hidden-screen');
+            ui.start.classList.add('hidden-screen');
+            ui.result.classList.add('hidden-screen');
+            ui.game.classList.remove('hidden-screen');
             
-            timerTxt.innerText = timeLeft;
-            document.getElementById('bottle').classList.add('shaking');
+            ui.timer.innerText = timeLeft;
+            ui.bottle.classList.add('shake-screen'); // 輕微晃動
             
             window.addEventListener('devicemotion', handleMotion);
             
             timerInterval = setInterval(() => {
                 timeLeft--;
-                timerTxt.innerText = timeLeft;
-                if (timeLeft <= 0) finishGame();
+                ui.timer.innerText = timeLeft;
+                
+                // 最後3秒變紅且變大
+                if(timeLeft <= 3) {
+                    ui.timer.classList.add('text-red-500', 'scale-110');
+                }
+
+                if (timeLeft <= 0) endGame();
             }, 1000);
         }
 
         function handleMotion(event) {
             if (state !== 'PLAYING') return;
 
-            // 相容性處理：嘗試獲取加速度
             const acc = event.acceleration || event.accelerationIncludingGravity;
             if (!acc) return;
-
-            // 指示燈閃爍
-            indicator.classList.add('sensor-ok');
-            setTimeout(() => indicator.classList.remove('sensor-ok'), 50);
 
             const x = acc.x || 0;
             const y = acc.y || 0;
             const z = acc.z || 0;
             
-            // 計算三軸合力
-            const force = Math.sqrt(x*x + y*y + z*z);
+            // 計算力度 (畢氏定理)
+            let force = Math.sqrt(x*x + y*y + z*z);
             
-            // 閥值設定，過濾微小移動
-            if (force > 4) {
-                // 根據是否有重力數據調整權重
-                const multiplier = event.acceleration ? 0.8 : 0.4;
-                pressure += force * multiplier;
-                if (pressure > MAX_PRESSURE) pressure = MAX_PRESSURE;
-                updateGameUI();
+            // 過濾雜訊
+            if (force > 5) {
+                const now = Date.now();
+                
+                // Combo 判定: 如果兩次搖動間隔很短，增加倍率
+                if (now - lastShakeTime < 150) {
+                    shakeMultiplier = Math.min(shakeMultiplier + 0.05, 3.0); // 最高3倍
+                } else {
+                    shakeMultiplier = Math.max(1.0, shakeMultiplier - 0.1);
+                }
+                lastShakeTime = now;
+
+                // 核心算式：力度 指數加成 * Combo
+                // Math.pow(force, 1.2) 讓大力的搖動比小力搖動得到的分數多很多
+                const points = Math.pow(force, 1.3) * shakeMultiplier * 0.5;
+                
+                rawScore += points;
+                updateGameUI(force);
             }
         }
 
-        function updateGameUI() {
-            const ratio = pressure / MAX_PRESSURE;
-            bar.style.width = (ratio * 100) + '%';
-            document.getElementById('pressure-text').innerText = Math.floor(ratio * 100) + '%';
+        function updateGameUI(currentForce) {
+            // 計算層數 (約 rawScore 的 1/3)
+            const floors = Math.floor(rawScore / 3);
+            ui.liveScore.innerText = floors;
+
+            // 視覺震動：根據當下力度改變瓶子位置
+            const shakeX = (Math.random() - 0.5) * currentForce;
+            const shakeY = (Math.random() - 0.5) * currentForce;
+            const rotate = (Math.random() - 0.5) * (currentForce / 2);
+            ui.bottle.style.transform = `translate(${shakeX}px, ${shakeY}px) rotate(${rotate}deg)`;
+
+            // 計算 Tier (每 2000 分一個階段)
+            // 讓進度條無限循環，但顏色改變
+            const tierBase = 2000;
+            const currentTier = Math.floor(rawScore / tierBase); 
+            const progress = (rawScore % tierBase) / tierBase * 100;
+
+            ui.bar.style.width = `${progress}%`;
+
+            // 根據 Tier 改變顏色和文字
+            ui.bar.className = 'h-full w-0 transition-all duration-75'; // 重置 class
             
-            // 隨壓力增加晃動速度
-            const speed = 0.1 - (ratio * 0.08);
-            document.getElementById('bottle').style.animationDuration = Math.max(0.02, speed) + 's';
+            if (currentTier === 0) {
+                ui.bar.classList.add('tier-1');
+                ui.tierText.innerText = "WARMING UP";
+                ui.tierText.style.color = "#fbbf24";
+                ui.speedBg.style.opacity = 0;
+            } else if (currentTier === 1) {
+                ui.bar.classList.add('tier-2');
+                ui.tierText.innerText = "HEATING UP!";
+                ui.tierText.style.color = "#f97316";
+                ui.speedBg.style.opacity = 0.2;
+            } else if (currentTier === 2) {
+                ui.bar.classList.add('tier-3');
+                ui.tierText.innerText = "ON FIRE!!";
+                ui.tierText.style.color = "#ef4444";
+                ui.speedBg.style.opacity = 0.4;
+            } else if (currentTier === 3) {
+                ui.bar.classList.add('tier-4');
+                ui.tierText.innerText = "SUPER CHARGED!!!";
+                ui.tierText.style.color = "#a855f7";
+                ui.speedBg.style.opacity = 0.6;
+            } else {
+                ui.bar.classList.add('tier-5'); // 彩虹
+                ui.tierText.innerText = "GOD MODE 🚀";
+                ui.tierText.style.color = "#22c55e";
+                ui.speedBg.style.opacity = 0.8;
+                ui.speedBg.style.animationDuration = '0.5s'; // 加速背景
+            }
         }
 
-        function finishGame() {
+        function endGame() {
             state = 'ANIMATING';
             clearInterval(timerInterval);
             window.removeEventListener('devicemotion', handleMotion);
-            document.getElementById('bottle').classList.remove('shaking');
+            ui.bottle.style.transform = 'none';
+            ui.speedBg.style.opacity = 0;
+
+            // 計算最終層數
+            const finalScore = Math.floor(rawScore / 3);
             
-            // 執行噴發動作
-            playPopAnimation();
+            // 動畫流程
+            playPopAnimation(finalScore);
         }
 
-        function playPopAnimation() {
-            const cap = document.getElementById('bottle-cap');
-            const foam = document.getElementById('foam');
-            const ratio = pressure / MAX_PRESSURE;
-            
-            // 1. 瓶蓋飛出
-            cap.style.transition = 'transform 0.4s cubic-bezier(0.2, 0, 0.2, 1), opacity 0.3s';
-            cap.style.transform = `translateY(-400px) rotate(${720 * ratio}deg) translateX(${50 * (Math.random()-0.5)}px)`;
-            cap.style.opacity = '0';
+        function playPopAnimation(floors) {
+            // 瓶蓋飛走
+            ui.cap.style.transition = 'transform 0.5s ease-out, opacity 0.3s';
+            ui.cap.style.transform = `translateY(-500px) rotate(${Math.random()*1000}deg)`;
+            ui.cap.style.opacity = '0';
 
-            // 2. 泡沫噴發
-            const sprayHeight = ratio * 500; // 視覺高度
-            foam.style.height = sprayHeight + 'px';
-            
-            // 3. 粒子特效
-            createParticles(sprayHeight, ratio);
+            // 泡沫根據層數噴發 (視覺上限制在一定高度以免破版，但粒子可以飛很高)
+            // 對數函數讓高分時高度增長變緩，但依然有區別
+            const visualHeight = Math.min(Math.log10(floors + 1) * 150, 400); 
+            ui.foam.style.height = `${visualHeight}px`;
 
-            // 4. 計算分數並顯示
-            const score = Math.floor(ratio * 100); 
-            setTimeout(() => showResults(score), 2500);
+            // 粒子特效 (根據分數決定數量)
+            createParticles(visualHeight, floors);
+
+            setTimeout(() => showResults(floors), 2000);
         }
 
-        function createParticles(height, ratio) {
-            const count = 40 + (ratio * 60);
-            const container = document.getElementById('game-screen');
+        function createParticles(height, floors) {
+            // 分數越高，粒子越多、噴得越快
+            const count = Math.min(50 + Math.floor(floors / 100), 150);
+            const container = ui.game;
+            
             for (let i = 0; i < count; i++) {
                 const p = document.createElement('div');
                 p.className = 'particle';
-                const size = Math.random() * 10 + 4;
+                const size = Math.random() * 8 + 3;
                 p.style.width = size + 'px';
                 p.style.height = size + 'px';
                 p.style.left = '50%';
-                p.style.bottom = (240 + height) + 'px';
+                p.style.bottom = (220 + height) + 'px'; // 從泡沫頂端噴出
                 
-                const tx = (Math.random() - 0.5) * 300;
-                const ty = -Math.random() * 500;
+                const tx = (Math.random() - 0.5) * 400; // 擴散寬度
+                const ty = -Math.random() * (600 + floors / 10); // 噴發力度隨分數增加
                 
                 container.appendChild(p);
+                
                 p.animate([
                     { transform: 'translate(0, 0)', opacity: 1 },
                     { transform: `translate(${tx}px, ${ty}px)`, opacity: 0 }
@@ -328,43 +424,87 @@
                     easing: 'ease-out',
                     fill: 'forwards'
                 });
+                
                 setTimeout(() => p.remove(), 2000);
             }
         }
 
-        function showResults(score) {
+        function showResults(floors) {
             state = 'RESULT';
-            screens.game.classList.add('hidden-screen');
-            screens.result.classList.remove('hidden-screen');
+            ui.game.classList.add('hidden-screen');
+            ui.result.classList.remove('hidden-screen');
             
-            scoreTxt.innerText = score;
-            
-            // 更新最高分
-            if (score > bestScore) {
-                bestScore = score;
-                localStorage.setItem('beerBestScore', bestScore);
-                document.getElementById('result-message').innerHTML = "🔥 <strong>新紀錄！</strong><br>你的手速簡直是單身三十年的實力！";
+            // 數字滾動效果
+            animateValue(ui.finalFloors, 0, floors, 1500);
+
+            // 評級系統
+            let rankText = "";
+            let rankColor = "";
+            let compareObj = "";
+            let meters = floors * 3; // 假設一層樓3米
+
+            if (floors < 100) {
+                rankText = "缺乏鍛鍊 🥱";
+                rankColor = "text-gray-400";
+                compareObj = "路邊電線桿";
+            } else if (floors < 500) {
+                rankText = "普通大廈 🏢";
+                rankColor = "text-yellow-400";
+                compareObj = "住宅大樓";
+            } else if (floors < 1500) {
+                rankText = "摩天大樓 🌆";
+                rankColor = "text-orange-400";
+                compareObj = "台北101 / IFC";
+            } else if (floors < 3000) {
+                rankText = "高聳入雲 ☁️";
+                rankColor = "text-red-400";
+                compareObj = "聖母峰 (Mt. Everest)";
+            } else if (floors < 6000) {
+                rankText = "平流層 ✈️";
+                rankColor = "text-purple-400";
+                compareObj = "民航機飛行高度";
+            } else if (floors < 10000) {
+                rankText = "外太空邊緣 🛰️";
+                rankColor = "text-blue-400";
+                compareObj = "低軌道衛星";
             } else {
-                if (score > 80) document.getElementById('result-message').innerText = "太狂了！這瓶酒噴到了二樓！";
-                else if (score > 40) document.getElementById('result-message').innerText = "不錯喔，非常有氣！";
-                else document.getElementById('result-message').innerText = "力道不夠喔，再加把勁吧！";
+                rankText = "衝出銀河系 🌌";
+                rankColor = "text-green-400";
+                compareObj = "國際太空站 (ISS)";
             }
-            updateBestScoreUI();
+
+            ui.rankBadge.innerText = rankText;
+            ui.rankBadge.className = `px-6 py-2 bg-slate-800 rounded-lg border border-slate-600 text-lg font-bold transform rotate-2 ${rankColor}`;
+            
+            ui.compareScore.innerText = `${meters.toLocaleString()} 公尺`;
+            ui.compareObject.innerText = compareObj;
         }
 
-        function updateBestScoreUI() {
-            document.getElementById('best-record').innerText = `今日最高紀錄: ${bestScore}m`;
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
         }
 
         function resetGame() {
-            pressure = 0;
-            bar.style.width = '0%';
-            const cap = document.getElementById('bottle-cap');
-            cap.style.transition = 'none';
-            cap.style.transform = 'none';
-            cap.style.opacity = '1';
-            document.getElementById('foam').style.height = '0';
-            document.getElementById('pressure-text').innerText = '0%';
+            rawScore = 0;
+            ui.timer.classList.remove('text-red-500', 'scale-110');
+            ui.bar.style.width = '0%';
+            ui.bar.className = 'h-full w-0 tier-1';
+            ui.tierText.innerText = "NORMAL";
+            ui.tierText.style.color = "white";
+            ui.cap.style.transition = 'none';
+            ui.cap.style.transform = 'none';
+            ui.cap.style.opacity = '1';
+            ui.foam.style.height = '0';
+            ui.liveScore.innerText = '0';
         }
     </script>
 </body>
