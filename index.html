@@ -13,6 +13,8 @@
             color: white;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             perspective: 1000px; /* 增加 3D 透視感 */
+            -webkit-user-select: none; /* 禁止選取文字 */
+            user-select: none;
         }
 
         /* 遊戲容器震動特效 */
@@ -117,39 +119,4 @@
         
         <div class="relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-amber-600 to-purple-600 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-            <div class="relative w-48 h-48 bg-slate-900 rounded-full flex items-center justify-center border-4 border-slate-700">
-                 <span class="text-7xl">🚀</span>
-            </div>
-        </div>
-
-        <button id="btn-start" class="relative w-full py-5 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl text-white font-black text-2xl shadow-xl transform active:scale-95 transition-all overflow-hidden">
-            <span class="relative z-10">開始挑戰</span>
-            <div class="absolute inset-0 h-full w-full bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-        </button>
-        
-        <p class="text-xs text-slate-600">iOS 用戶請記得允許動作權限</p>
-    </div>
-
-    <!-- 2. 遊戲進行畫面 -->
-    <div id="game-screen" class="hidden-screen flex-grow flex flex-col items-center justify-between w-full z-50 py-4">
-        
-        <!-- 頂部數據 -->
-        <div class="w-full flex justify-between items-center px-2">
-            <div class="flex flex-col items-start">
-                <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">TIME</span>
-                <span id="timer" class="text-6xl font-black text-white leading-none">10</span>
-            </div>
-            <div class="flex flex-col items-end">
-                <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">POWER</span>
-                <span id="live-score" class="text-4xl font-black text-amber-500 tabular-nums">0</span>
-            </div>
-        </div>
-        
-        <!-- 中央瓶子 -->
-        <div class="relative w-full flex-grow flex justify-center items-end pb-8">
-            <div id="foam" class="foam-spray"></div>
-            
-            <div id="bottle" class="bottle-container origin-bottom">
-                <svg width="100" height="260" viewBox="0 0 100 260" fill="none">
-                    <!-- 瓶身 -->
-                    <path d="M3
+            <div class="relative w-48 h-48 bg-slate-900 rounded-full flex items-center justify-center border-4
